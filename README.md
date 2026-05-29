@@ -65,3 +65,38 @@ Connect:
 ```shell
 ./tool/ssh.sh
 ```
+
+## SSH connection via Cloudflare Tunnel
+
+Using Cloudflare Tunnel, you can connect to the VPS without exposing the SSH port directly to the internet.
+
+### Prerequisites
+
+- A Cloudflare Zero Trust tunnel has been created
+- The SSH hostname is registered as a Public Hostname on the tunnel
+- `cloudflared` is installed inside the Dev Container
+
+### Configuration
+
+Add the Cloudflare Tunnel variables to `tool/.env`.
+
+```shell
+# tool/.env
+SSH_HOST=xxx.xxx.xxx.xxx
+SSH_USER={user}
+SSH_PORT=22
+SSH_KEY=/root/.ssh/your-key.pem
+
+# Cloudflare Tunnel
+SUBDOMAIN=subdomain
+DOMAIN=example.com
+```
+
+Connect:
+
+```shell
+chmod +x tool/cloudflared.sh
+./tool/cloudflared.sh
+```
+
+This uses `SUBDOMAIN.DOMAIN` as the ProxyCommand hostname to establish an SSH tunnel through cloudflared.

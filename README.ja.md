@@ -65,3 +65,38 @@ SSH_KEY=/root/.ssh/your-key.pem
 ```shell
 ./tool/ssh.sh
 ```
+
+## Cloudflare Tunnel 経由での SSH 接続
+
+Cloudflare Tunnel を使うことで、VPS の SSH ポートをインターネットに直接公開せずに接続できます。
+
+### 前提条件
+
+- Cloudflare Zero Trust でトンネルが作成済みであること
+- トンネルの Public Hostname に SSH 用のホスト名が登録済みであること
+- Dev Container に `cloudflared` がインストール済みであること
+
+### 設定
+
+`tool/.env` に Cloudflare Tunnel 用の変数を追加します。
+
+```shell
+# tool/.env
+SSH_HOST=xxx.xxx.xxx.xxx
+SSH_USER={user}
+SSH_PORT=22
+SSH_KEY=/root/.ssh/your-key.pem
+
+# Cloudflare Tunnel
+SUBDOMAIN=subdomain
+DOMAIN=example.com
+```
+
+接続:
+
+```shell
+chmod +x tool/cloudflared.sh
+./tool/cloudflared.sh
+```
+
+`SUBDOMAIN.DOMAIN` のホスト名を ProxyCommand として使用し、cloudflared 経由で SSH トンネルを確立します。
