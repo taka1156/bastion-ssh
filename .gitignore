@@ -1,0 +1,5 @@
+.env
+.pem
+**/.ssh/**
+**/.key/**
+**/.DS_Store

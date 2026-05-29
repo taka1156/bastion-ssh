@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/main/extensions/configuration-editing/schemas/devContainer.vscode.schema.json",
+  "name": "bastion-ssh",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "bastion",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": false
+      },
+      "github.copilot.advanced": {
+        "excludeFiles": [
+          "**/*.env",
+          "**/*.pem"
+        ]
+      },
+      "extensions": [
+        "MS-CEINTL.vscode-language-pack-ja",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  }
+}
