@@ -1,4 +1,4 @@
-# ssh-bastion
+# bastion-ssh
 
 [English version here](README.md)
 

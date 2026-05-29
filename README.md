@@ -1,4 +1,4 @@
-# ssh-bastion
+# bastion-ssh
 
 [日本語版はこちら](README.ja.md)
 
