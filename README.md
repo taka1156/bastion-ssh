@@ -10,63 +10,54 @@ A portable SSH bastion tool using Dev Containers. Connect to any remote server w
 
 ## Setup
 
-### 1. Remote server
+### 1. Configure connection settings
 
-> The administrator uses [ConoHa VPS](https://vps.conoha.jp/) operated by GMO Internet Group.
-
-Create a user and place the SSH public key. Replace `{user}` with your desired username.
+Generate `tool/.env` interactively.
 
 ```shell
-adduser {user}
-usermod -aG sudo {user}
-
-mkdir -p /home/{user}/.ssh
-cp /root/.ssh/authorized_keys /home/{user}/.ssh/
-chown -R {user}:{user} /home/{user}/.ssh
-chmod 700 /home/{user}/.ssh
-chmod 600 /home/{user}/.ssh/authorized_keys
+make setup
 ```
 
-Verify:
-
-```shell
-ls -la /home/{user}/.ssh/
-# total 12
-# drwx------ 2 {user} {user} 4096 May 29 08:15 .
-# drwxr-x--- 3 {user} {user} 4096 May 29 08:05 ..
-# -rw------- 1 {user} {user}  399 May 29 08:54 authorized_keys
-```
-
-### 2. Local (inside Dev Container)
-
-```shell
-chmod +x tool/ssh.sh
-chmod 600 /root/.ssh/your-key.pem
-```
-
-## SSH connection
-
-Copy `tool/.env.example` to `tool/.env` and fill in your connection details.
-
-```shell
-cp tool/.env.example tool/.env
-```
+The generated `.env` looks like:
 
 ```shell
 # tool/.env
-SSH_HOST=xxx.xxx.xxx.xxx
-SSH_USER={user}
-SSH_PORT=9999
-SSH_KEY=/root/.ssh/your-key.pem
+HOST=xxx.xxx.xxx.xxx
+USER={user}
+PORT=9999
+KEY=/root/.ssh/your-key.pem
 ```
 
-Connect:
+> If you get a permission error for the private key, run:
+> ```shell
+> chmod 600 /root/.ssh/your-key.pem
+> ```
+
+### 2. Connect via SSH
 
 ```shell
-./tool/ssh.sh
+make ssh
 ```
 
-## SSH connection via Cloudflare Tunnel
+## File transfer
+
+### rsync
+
+```shell
+# Upload
+make rsync ARGS="-av ./local/path/ {user}@{host}:/remote/path/"
+
+# Download
+make rsync ARGS="-av {user}@{host}:/remote/path/ ./local/path/"
+```
+
+### SFTP
+
+```shell
+make sftp ARGS="{user}@{host}"
+```
+
+## Optional: Cloudflare Tunnel
 
 Using Cloudflare Tunnel, you can connect to the VPS without exposing the SSH port directly to the internet.
 
@@ -78,25 +69,20 @@ Using Cloudflare Tunnel, you can connect to the VPS without exposing the SSH por
 
 ### Configuration
 
-Add the Cloudflare Tunnel variables to `tool/.env`.
+When running `make setup`, select yes to enable Cloudflare Tunnel. The following variables will be added to `tool/.env`.
 
 ```shell
 # tool/.env
-SSH_HOST=xxx.xxx.xxx.xxx
-SSH_USER={user}
-SSH_PORT=22
-SSH_KEY=/root/.ssh/your-key.pem
+ENABLE_TUNNEL=true
+
+HOST=xxx.xxx.xxx.xxx
+USER={user}
+PORT=22
+KEY=/root/.ssh/your-key.pem
 
 # Cloudflare Tunnel
 SUBDOMAIN=subdomain
 DOMAIN=example.com
 ```
 
-Connect:
-
-```shell
-chmod +x tool/cloudflared.sh
-./tool/cloudflared.sh
-```
-
-This uses `SUBDOMAIN.DOMAIN` as the ProxyCommand hostname to establish an SSH tunnel through cloudflared.
+With `ENABLE_TUNNEL=true`, all commands (`make ssh`, `make rsync`, `make sftp`) automatically route through Cloudflare Tunnel.

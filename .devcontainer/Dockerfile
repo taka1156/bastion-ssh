@@ -10,6 +10,7 @@ ENV LANG=ja_JP.UTF-8 \
 RUN <<-EOF
 apk add --no-cache \
   openssh-client \
+  rsync \
   bash \
   bash-completion \
   ca-certificates \
@@ -17,6 +18,7 @@ apk add --no-cache \
   git \
   git-lfs \
   curl \
+  make \
   musl-locales \
   musl-locales-lang
 

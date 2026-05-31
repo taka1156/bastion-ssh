@@ -2,4 +2,8 @@
 
 source "$(dirname "$0")/.env"
 
-ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST"
+if [ "$ENABLE_TUNNEL" = "true" ]; then
+  ssh -i "$KEY" -p "$PORT" -o ProxyCommand="cloudflared access ssh --hostname $SUBDOMAIN.$DOMAIN" "$USER@$HOST"
+else
+  ssh -i "$KEY" -p "$PORT" "$USER@$HOST"
+fi
