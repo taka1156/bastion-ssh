@@ -1,5 +1,6 @@
-.env
-.pem
+**/.env
+**/known_hosts
+**/known_hosts.old
+**/*.pem
 **/.ssh/**
-**/.key/**
 **/.DS_Store
