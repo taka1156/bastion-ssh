@@ -1,0 +1,185 @@
+---
+# =============================================================================
+# Ansible Playbook: Docker Compose + Portainer + cloudflared セットアップ
+# 対象OS: Ubuntu / Debian 系
+# 使い方:
+#   ansible-playbook -i inventory.ini setup.yml
+#   または特定ホストのみ:
+#   ansible-playbook -i inventory.ini setup.yml --limit web01
+# =============================================================================
+
+- name: Docker Compose / Portainer / cloudflared セットアップ
+  hosts: all
+  become: true
+  vars:
+    # ---------- Docker ----------
+    docker_compose_version: "v5.1.4"          # 必要に応じて変更
+
+    # ---------- Portainer ----------
+    portainer_data_dir: /opt/portainer/data
+    portainer_http_port: 9000
+    portainer_https_port: 9443
+    portainer_container_name: portainer
+
+    # ---------- cloudflared ----------
+    # Cloudflare Zero Trust トンネルトークン
+    # run.sh 経由で tool/.env の CF_TUNNEL_TOKEN が -e で渡される
+    # 直接実行する場合: ansible-playbook ... -e "cf_tunnel_token=YOUR_TOKEN"
+    cf_container_name: cloudflared
+
+  # ---------------------------------------------------------------------------
+  # 前提チェック
+  # ---------------------------------------------------------------------------
+  pre_tasks:
+    - name: OS ファミリー確認
+      assert:
+        that: ansible_os_family == "Debian"
+        fail_msg: "このPlaybookはDebian/Ubuntu系専用です (現在: {{ ansible_os_family }})"
+
+  # ---------------------------------------------------------------------------
+  # タスク
+  # ---------------------------------------------------------------------------
+  tasks:
+
+    # ── 1. 依存パッケージ ────────────────────────────────────────────────────
+    - name: 必要パッケージのインストール
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+        state: present
+        update_cache: true
+
+    # ── 2. Docker Engine ─────────────────────────────────────────────────────
+    - name: Docker APT keyrings ディレクトリ作成
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Docker GPGキー追加
+      get_url:
+        url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Docker APTリポジトリ追加
+      apt_repository:
+        repo: >-
+          deb [arch={{ ansible_architecture | replace('x86_64','amd64') | replace('aarch64','arm64') }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/{{ ansible_distribution | lower }}
+          {{ ansible_distribution_release }} stable
+        filename: docker
+        state: present
+
+    - name: Docker Engine インストール
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+        state: present
+        update_cache: true
+
+    - name: Docker サービス 有効化 & 起動
+      systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    # ── 3. Docker Compose Plugin ──────────────────────────────────────────────
+    - name: Docker Compose Plugin ディレクトリ作成
+      file:
+        path: /usr/local/lib/docker/cli-plugins
+        state: directory
+        mode: "0755"
+
+    - name: Docker Compose Plugin ダウンロード
+      get_url:
+        url: >-
+          https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-{{ ansible_architecture }}
+        dest: /usr/local/lib/docker/cli-plugins/docker-compose
+        mode: "0755"
+
+    - name: docker compose バージョン確認
+      command: docker compose version
+      register: compose_ver
+      changed_when: false
+
+    - name: docker compose バージョン表示
+      debug:
+        msg: "{{ compose_ver.stdout }}"
+
+    # ── 4. Portainer CE ───────────────────────────────────────────────────────
+    - name: Portainer データディレクトリ作成
+      file:
+        path: "{{ portainer_data_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Portainer コンテナ起動
+      community.docker.docker_container:
+        name: "{{ portainer_container_name }}"
+        image: portainer/portainer-ce:latest
+        restart_policy: always
+        state: started
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - "{{ portainer_data_dir }}:/data"
+        ports:
+          - "{{ portainer_http_port }}:9000"
+          - "{{ portainer_https_port }}:9443"
+
+    - name: Portainer 起動確認
+      community.docker.docker_container_info:
+        name: "{{ portainer_container_name }}"
+      register: portainer_info
+
+    - name: Portainer ステータス表示
+      debug:
+        msg: "Portainer: {{ portainer_info.container.State.Status }}"
+
+    # ── 5. cloudflared (Tunnel) ────────────────────────────────────────────────
+    - name: cloudflared トークン設定確認
+      assert:
+        that: cf_tunnel_token != ""
+        fail_msg: >-
+          cf_tunnel_token が未設定です。
+          --extra-vars "cf_tunnel_token=YOUR_TOKEN" または
+          ansible-vault で vault_cf_tunnel_token を定義してください。
+
+    - name: cloudflared コンテナ起動
+      community.docker.docker_container:
+        name: "{{ cf_container_name }}"
+        image: cloudflare/cloudflared:latest
+        restart_policy: always
+        state: started
+        command: "tunnel --no-autoupdate run --token {{ cf_tunnel_token }}"
+
+    - name: cloudflared ステータス表示
+      community.docker.docker_container_info:
+        name: "{{ cf_container_name }}"
+      register: cf_info
+
+    - name: cloudflared ステータス
+      debug:
+        msg: "cloudflared: {{ cf_info.container.State.Status }}"
+
+  # ---------------------------------------------------------------------------
+  # 完了サマリー
+  # ---------------------------------------------------------------------------
+  post_tasks:
+    - name: セットアップ完了サマリー
+      debug:
+        msg:
+          - "========================================"
+          - "✅  Docker Compose : {{ compose_ver.stdout }}"
+          - "✅  Portainer      : http://{{ ansible_host }}:{{ portainer_http_port }}"
+          - "✅  Portainer HTTPS: https://{{ ansible_host }}:{{ portainer_https_port }}"
+          - "✅  cloudflared   : Running"
+          - "========================================"

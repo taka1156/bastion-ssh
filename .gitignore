@@ -4,3 +4,4 @@
 **/*.pem
 **/.ssh/**
 **/.DS_Store
+**/*.ini

@@ -1,4 +1,8 @@
-.PHONY: setup ssh rsync sftp
+.PHONY: setup-ansible setup ssh rsync sftp
+
+## Ansible setup
+setup-ansible:
+	@bash tool/setup_ansible/run.sh
 
 ## Generate .env interactively
 setup:
