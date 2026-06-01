@@ -25,7 +25,6 @@
     # Cloudflare Zero Trust トンネルトークン
     # run.sh 経由で tool/.env の CF_TUNNEL_TOKEN が -e で渡される
     # 直接実行する場合: ansible-playbook ... -e "cf_tunnel_token=YOUR_TOKEN"
-    cf_container_name: cloudflared
 
   # ---------------------------------------------------------------------------
   # 前提チェック
@@ -153,22 +152,46 @@
           --extra-vars "cf_tunnel_token=YOUR_TOKEN" または
           ansible-vault で vault_cf_tunnel_token を定義してください。
 
-    - name: cloudflared コンテナ起動
-      community.docker.docker_container:
-        name: "{{ cf_container_name }}"
-        image: cloudflare/cloudflared:latest
-        restart_policy: always
-        state: started
-        command: "tunnel --no-autoupdate run --token {{ cf_tunnel_token }}"
+    - name: cloudflared アーキテクチャ設定
+      set_fact:
+        cf_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}"
 
-    - name: cloudflared ステータス表示
-      community.docker.docker_container_info:
-        name: "{{ cf_container_name }}"
+    - name: cloudflared .deb ダウンロード
+      get_url:
+        url: "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-{{ cf_arch }}.deb"
+        dest: /tmp/cloudflared.deb
+        mode: "0644"
+
+    - name: cloudflared インストール
+      apt:
+        deb: /tmp/cloudflared.deb
+        state: present
+
+    - name: cloudflared サービス登録済み確認
+      stat:
+        path: /etc/systemd/system/cloudflared.service
+      register: cf_service_stat
+
+    - name: cloudflared サービスインストール
+      command: cloudflared service install {{ cf_tunnel_token }}
+      when: not cf_service_stat.stat.exists
+
+    - name: cloudflared サービス 有効化 & 起動
+      systemd:
+        name: cloudflared
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: cloudflared ステータス確認
+      command: systemctl is-active cloudflared
       register: cf_info
+      changed_when: false
+      failed_when: false
 
     - name: cloudflared ステータス
       debug:
-        msg: "cloudflared: {{ cf_info.container.State.Status }}"
+        msg: "cloudflared: {{ cf_info.stdout }}"
 
   # ---------------------------------------------------------------------------
   # 完了サマリー
@@ -181,5 +204,5 @@
           - "✅  Docker Compose : {{ compose_ver.stdout }}"
           - "✅  Portainer      : http://{{ ansible_host }}:{{ portainer_http_port }}"
           - "✅  Portainer HTTPS: https://{{ ansible_host }}:{{ portainer_https_port }}"
-          - "✅  cloudflared   : Running"
+          - "✅  cloudflared   : {{ cf_info.stdout }}"
           - "========================================"
