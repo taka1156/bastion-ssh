@@ -10,7 +10,8 @@
         "terminal.integrated.defaultProfile.linux": "bash",
         "editor.tabSize": 2,
         "editor.insertSpaces": true,
-        "editor.detectIndentation": false
+        "editor.detectIndentation": false,
+        "ansible.validation.lint.enabled": false
       },
       "github.copilot.advanced": {
         "excludeFiles": [
@@ -22,7 +23,8 @@
         "MS-CEINTL.vscode-language-pack-ja",
         "GitHub.copilot",
         "GitHub.copilot-chat",
-        "streetsidesoftware.code-spell-checker"
+        "streetsidesoftware.code-spell-checker",
+        "redhat.ansible"
       ]
     }
   }

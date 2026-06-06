@@ -1,0 +1,35 @@
+---
+# ── 1. Architecture detection ───────────────────────────────────────────────
+- name: Set cloudflared architecture
+  set_fact:
+    cf_arch: "{{ 'amd64' if ansible_facts.architecture == 'x86_64' else 'arm64' }}"
+
+# ── 2. Install cloudflared ──────────────────────────────────────────────────
+- name: Download cloudflared .deb
+  get_url:
+    url: "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-{{ cf_arch }}.deb"
+    dest: /tmp/cloudflared.deb
+    mode: "0644"
+
+- name: Install cloudflared
+  apt:
+    deb: /tmp/cloudflared.deb
+    state: present
+  when: not ansible_check_mode
+
+# ── 3. Register service ─────────────────────────────────────────────────────
+- name: Check if cloudflared service is already installed
+  stat:
+    path: /etc/systemd/system/cloudflared.service
+  register: cf_service_stat
+
+- name: Install cloudflared service
+  command: cloudflared service install {{ cf_tunnel_token }}
+  when: not cf_service_stat.stat.exists
+
+- name: Enable & start cloudflared service
+  systemd:
+    name: cloudflared
+    enabled: true
+    state: started
+    daemon_reload: true

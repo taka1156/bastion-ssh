@@ -1,0 +1,4 @@
+---
+# Cloudflare Zero Trust Tunnel token.
+# Set via --extra-vars "cf_tunnel_token=YOUR_TOKEN" or Ansible Vault.
+cf_tunnel_token: ""

@@ -12,7 +12,7 @@ A portable SSH bastion tool using Dev Containers. Connect to any remote server w
 
 ### 1. Configure connection settings
 
-Generate `tool/.env` interactively.
+Generate `.env` interactively.
 
 ```shell
 make setup
@@ -21,7 +21,7 @@ make setup
 The generated `.env` looks like:
 
 ```shell
-# tool/.env
+# .env
 HOST=xxx.xxx.xxx.xxx
 USER={user}
 PORT=9999
@@ -69,10 +69,10 @@ Using Cloudflare Tunnel, you can connect to the VPS without exposing the SSH por
 
 ### Configuration
 
-When running `make setup`, select yes to enable Cloudflare Tunnel. The following variables will be added to `tool/.env`.
+When running `make setup`, select yes to enable Cloudflare Tunnel. The following variables will be added to `.env`.
 
 ```shell
-# tool/.env
+# .env
 ENABLE_TUNNEL=true
 
 HOST=xxx.xxx.xxx.xxx
@@ -86,3 +86,50 @@ DOMAIN=example.com
 ```
 
 With `ENABLE_TUNNEL=true`, all commands (`make ssh`, `make rsync`, `make sftp`) automatically route through Cloudflare Tunnel.
+
+## Ansible Provisioning
+
+Using the included Ansible playbook, you can automatically install and configure `cloudflared` on the remote server.
+
+### Prerequisites
+
+- `make setup` has been completed and `.env` exists
+- The following variables are added to `.env`:
+
+```shell
+# .env (additions for Ansible)
+CF_TUNNEL_TOKEN=your-cloudflare-tunnel-token
+SUDO_PASS=your-sudo-password
+```
+
+### Run
+
+```shell
+make setup-ansible
+```
+
+Dry-run (no changes applied):
+
+```shell
+make setup-ansible ARGS="--check --diff"
+```
+
+### Ansible Vault (optional)
+
+Instead of storing `CF_TUNNEL_TOKEN` in `.env`, you can manage it via Ansible Vault.
+
+```shell
+# Create an encrypted vault file from the example
+cp ansible/vault/secrets.yml.example ansible/vault/secrets.yml
+ansible-vault create ansible/vault/secrets.yml
+```
+
+Then run with vault authentication:
+
+```shell
+make setup-ansible ARGS="--ask-vault-pass"
+# or
+make setup-ansible ARGS="--vault-password-file /path/to/.vault_pass"
+```
+
+> When `CF_TUNNEL_TOKEN` is set in both `.env` and Vault, the value in `.env` takes precedence.

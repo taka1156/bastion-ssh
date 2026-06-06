@@ -1,4 +1,8 @@
-.PHONY: setup ssh rsync sftp
+.PHONY: setup-ansible setup ssh rsync sftp
+
+## Ansible setup (pass extra args with ARGS="...")
+setup-ansible:
+	@bash tool/setup_ansible.sh $(ARGS)
 
 ## Generate .env interactively
 setup:
@@ -15,5 +19,3 @@ rsync:
 ## Open interactive SFTP session (pass extra args with ARGS="...")
 sftp:
 	@bash tool/sftp.sh $(ARGS)
-
-
