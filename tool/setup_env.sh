@@ -1,7 +1,6 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(dirname "$0")"
-ENV_EXAMPLE="$SCRIPT_DIR/.env.example"
+ENV_EXAMPLE=".env.example"
 
 # Determine output path from argument
 if [ -n "$1" ]; then
@@ -11,7 +10,7 @@ if [ -n "$1" ]; then
     OUTPUT="$1"
   fi
 else
-  OUTPUT="$SCRIPT_DIR/.env"
+  OUTPUT=".env"
 fi
 
 # Check .env.example exists
@@ -55,7 +54,15 @@ esac
 if [ "$ENABLE_TUNNEL" = "true" ]; then
   read -rp "SUBDOMAIN: " SUBDOMAIN
   read -rp "DOMAIN: " DOMAIN
+  read -rp "CF_TUNNEL_TOKEN: " CF_TUNNEL_TOKEN
 fi
+
+echo ""
+echo "=== Ansible Settings ==="
+read -rp "CF_TUNNEL_TOKEN (skip if already entered above): " CF_TUNNEL_TOKEN_ANSIBLE
+CF_TUNNEL_TOKEN="${CF_TUNNEL_TOKEN:-$CF_TUNNEL_TOKEN_ANSIBLE}"
+read -rsp "SUDO_PASS (sudo password for remote user): " SUDO_PASS
+echo ""
 
 # Write .env
 mkdir -p "$(dirname "$OUTPUT")"
@@ -85,6 +92,15 @@ SUBDOMAIN=$SUBDOMAIN
 DOMAIN=$DOMAIN
 EOF
 fi
+
+cat >> "$OUTPUT" <<EOF
+
+##############################
+# Ansible
+##############################
+CF_TUNNEL_TOKEN=$CF_TUNNEL_TOKEN
+SUDO_PASS=$SUDO_PASS
+EOF
 
 echo ""
 echo "Saved to $OUTPUT"
