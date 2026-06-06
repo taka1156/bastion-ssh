@@ -19,4 +19,3 @@ rsync:
 ## Open interactive SFTP session (pass extra args with ARGS="...")
 sftp:
 	@bash tool/sftp.sh $(ARGS)
-
