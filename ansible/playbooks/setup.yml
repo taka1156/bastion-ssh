@@ -1,0 +1,43 @@
+---
+# =============================================================================
+# Ansible Playbook: Setup cloudflared (Cloudflare Tunnel)
+# Target OS: Debian/Ubuntu
+# Usage:
+#   make setup-ansible 
+#   make setup-ansible ARGS="--check --diff"  # dry-run
+# =============================================================================
+
+- name: Setup cloudflared (Cloudflare Tunnel)
+  hosts: servers
+  become: true
+
+  pre_tasks:
+    - name: Check OS family
+      assert:
+        that: ansible_facts.os_family == "Debian"
+        fail_msg: "This playbook is intended for Debian/Ubuntu only (current: {{ ansible_facts.os_family }})"
+
+    - name: Check Tunnel Token
+      assert:
+        that: cf_tunnel_token | length > 0
+        fail_msg: >-
+          cf_tunnel_token is not set.
+          Set CF_TUNNEL_TOKEN in tool/.env or pass --extra-vars "cf_tunnel_token=YOUR_TOKEN".
+
+  roles:
+    - cloudflared
+
+  post_tasks:
+    - name: Check cloudflared status
+      command: systemctl is-active cloudflared
+      register: cf_info
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Summary
+      debug:
+        msg:
+          - "========================================"
+          - "✅  cloudflared   : {{ cf_info.stdout }}"
+          - "========================================"

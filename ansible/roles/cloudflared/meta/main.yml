@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: cloudflared
+  author: taka1156
+  description: Install and configure cloudflared (Cloudflare Tunnel) as a systemd service
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all

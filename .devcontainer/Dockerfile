@@ -20,7 +20,9 @@ apk add --no-cache \
   curl \
   make \
   musl-locales \
-  musl-locales-lang
+  musl-locales-lang \
+  ansible \
+  ansible-lint
 
 curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/bin/cloudflared
 chmod +x /usr/bin/cloudflared

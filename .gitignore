@@ -5,3 +5,6 @@
 **/.ssh/**
 **/.DS_Store
 **/*.ini
+.ansible/
+ansible/vault/secrets.yml
+ansible/.tunnel_ssh.cfg
