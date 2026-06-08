@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM ubuntu:latest
 
 WORKDIR /workspace
 
@@ -8,24 +8,32 @@ ENV LANG=ja_JP.UTF-8 \
     TZ=Asia/Tokyo
 
 RUN <<-EOF
-apk add --no-cache \
-  openssh-client \
+apt-get update
+apt-get install -y --no-install-recommends \
   rsync \
-  bash \
   bash-completion \
-  ca-certificates \
-  tzdata \
   git \
   git-lfs \
   curl \
   make \
-  musl-locales \
-  musl-locales-lang \
+  locales \
   ansible \
   ansible-lint
 
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/bin/cloudflared
+rm -rf /var/lib/apt/lists/*
+
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o /usr/bin/cloudflared
 chmod +x /usr/bin/cloudflared
+
+curl -L https://github.com/secretlint/secretlint/releases/download/v13.0.2/secretlint-13.0.2-linux-arm64 -o /usr/bin/secretlint
+chmod +x /usr/bin/secretlint
+EOF
+
+RUN <<-EOF
+echo "ja_JP.UTF-8 UTF-8" > /etc/locale.gen
+locale-gen ja_JP.UTF-8
+ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
+dpkg-reconfigure -f noninteractive tzdata
 EOF
 
 RUN git lfs install

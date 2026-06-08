@@ -28,6 +28,65 @@ if [ -f "$OUTPUT" ]; then
   esac
 fi
 
+# ── Security: disable AI features ─────────────────────────────────────────
+echo ""
+echo "⚠️  This project stores sensitive credentials in .env."
+echo "    To prevent AI tools (GitHub Copilot, etc.) from reading them,"
+echo "    it is strongly recommended to disable AI features in VS Code settings"
+echo "    and remove AI skill/agent definition files from this workspace."
+echo ""
+echo "    This will:"
+echo "      - Add 'github.copilot.enable: false' and 'chat.disableAIFeatures: true'"
+echo "        to .vscode/settings.json"
+echo "      - Delete .github/agents/ and .github/skills/bastion-ssh/SKILL.md"
+echo ""
+read -rp "Apply these security settings? [y/N]: " APPLY_SECURITY
+case "$APPLY_SECURITY" in
+  [yY]*)
+    # Patch .vscode/settings.json
+    SETTINGS_FILE=".vscode/settings.json"
+    mkdir -p .vscode
+    if [ -f "$SETTINGS_FILE" ]; then
+      # Use python3 to merge JSON safely
+      python3 - "$SETTINGS_FILE" <<'PYEOF'
+import json, sys
+path = sys.argv[1]
+with open(path) as f:
+    data = json.load(f)
+data["github.copilot.enable"] = {"*": False}
+data["chat.disableAIFeatures"] = True
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+print("✅  .vscode/settings.json updated.")
+PYEOF
+    else
+      cat > "$SETTINGS_FILE" <<'JSON'
+{
+  "github.copilot.enable": {
+    "*": false
+  },
+  "chat.disableAIFeatures": true
+}
+JSON
+      echo "✅  .vscode/settings.json created."
+    fi
+
+    # Remove AI agent/skill files
+    if [ -d ".github/agents" ]; then
+      rm -rf ".github/agents"
+      echo "✅  .github/agents/ removed."
+    fi
+    if [ -f ".github/skills/bastion-ssh/SKILL.md" ]; then
+      rm -f ".github/skills/bastion-ssh/SKILL.md"
+      echo "✅  .github/skills/bastion-ssh/SKILL.md removed."
+    fi
+    ;;
+  *)
+    echo "⏭️  Skipped. You can apply these settings manually later."
+    ;;
+esac
+
 echo ""
 echo "=== SSH Settings ==="
 
@@ -58,21 +117,27 @@ if [ "$ENABLE_TUNNEL" = "true" ]; then
 fi
 
 echo ""
-echo "=== Ansible Settings ==="
-read -rp "CF_TUNNEL_TOKEN (skip if already entered above): " CF_TUNNEL_TOKEN_ANSIBLE
-CF_TUNNEL_TOKEN="${CF_TUNNEL_TOKEN:-$CF_TUNNEL_TOKEN_ANSIBLE}"
-read -rsp "SUDO_PASS (sudo password for remote user): " SUDO_PASS
-echo ""
+echo "=== Ansible Settings (optional) ==="
+read -rp "Configure Ansible settings? [y/N]: " USE_ANSIBLE
+case "$USE_ANSIBLE" in
+  [yY]*) ENABLE_ANSIBLE=true ;;
+  *)     ENABLE_ANSIBLE=false ;;
+esac
+
+if [ "$ENABLE_ANSIBLE" = "true" ]; then
+  read -rsp "SUDO_PASS (sudo password for remote user): " SUDO_PASS
+  echo ""
+
+  if [ "$ENABLE_TUNNEL" = "true" ]; then
+    read -rp "CF_TUNNEL_TOKEN (Cloudflare Tunnel token for Ansible provisioning): " CF_TUNNEL_TOKEN_ANSIBLE
+    CF_TUNNEL_TOKEN="${CF_TUNNEL_TOKEN:-$CF_TUNNEL_TOKEN_ANSIBLE}"
+  fi
+fi
 
 # Write .env
 mkdir -p "$(dirname "$OUTPUT")"
 
 cat > "$OUTPUT" <<EOF
-##############################
-# Environment variables for Cloudflare Tunnel
-##############################
-ENABLE_TUNNEL=$ENABLE_TUNNEL
-
 ##############################
 # SSH
 ##############################
@@ -80,14 +145,15 @@ HOST=$HOST
 USER=$USER
 PORT=$PORT
 KEY=$KEY
+
+##############################
+# Cloudflare Tunnel (optional)
+##############################
+ENABLE_TUNNEL=$ENABLE_TUNNEL
 EOF
 
 if [ "$ENABLE_TUNNEL" = "true" ]; then
   cat >> "$OUTPUT" <<EOF
-
-##############################
-# Cloudflare Tunnel
-##############################
 SUBDOMAIN=$SUBDOMAIN
 DOMAIN=$DOMAIN
 EOF
@@ -98,9 +164,27 @@ cat >> "$OUTPUT" <<EOF
 ##############################
 # Ansible
 ##############################
-CF_TUNNEL_TOKEN=$CF_TUNNEL_TOKEN
+EOF
+
+if [ "$ENABLE_ANSIBLE" = "true" ]; then
+  cat >> "$OUTPUT" <<EOF
+# sudo password for the remote user (required)
 SUDO_PASS=$SUDO_PASS
 EOF
+
+  if [ "$ENABLE_TUNNEL" = "true" ] && [ -n "${CF_TUNNEL_TOKEN:-}" ]; then
+    cat >> "$OUTPUT" <<EOF
+# Cloudflare Tunnel token (required when enable_cloudflare_tunnel=true)
+CF_TUNNEL_TOKEN=$CF_TUNNEL_TOKEN
+EOF
+  fi
+else
+  cat >> "$OUTPUT" <<EOF
+# Ansible skipped during setup. Add SUDO_PASS (and CF_TUNNEL_TOKEN if needed) manually.
+# SUDO_PASS=
+# CF_TUNNEL_TOKEN=
+EOF
+fi
 
 echo ""
 echo "Saved to $OUTPUT"

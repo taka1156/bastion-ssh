@@ -18,6 +18,28 @@ Generate `.env` interactively.
 make setup
 ```
 
+During setup, you will be prompted to apply security settings:
+
+```
+⚠️  This project stores sensitive credentials in .env.
+    To prevent AI tools (GitHub Copilot, etc.) from reading them,
+    it is strongly recommended to disable AI features in VS Code settings
+    and remove AI skill/agent definition files from this workspace.
+
+Apply these security settings? [y/N]:
+```
+
+Selecting `y` will automatically:
+
+- Add the following to `.vscode/settings.json`:
+  ```json
+  "github.copilot.enable": { "*": false },
+  "chat.disableAIFeatures": true
+  ```
+- Delete `.github/agents/` and `.github/skills/bastion-ssh/SKILL.md`
+
+> **Why is this necessary?** `.env` contains sensitive information such as SSH private key paths, sudo passwords, and Cloudflare tokens. Disabling AI features in this workspace prevents AI tools from reading these values.
+
 The generated `.env` looks like:
 
 ```shell
